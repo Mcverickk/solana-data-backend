@@ -1,17 +1,11 @@
 const { PublicKey } = require("@solana/web3.js");
-const { processTransactions } = require("./transactionProcessor.js");
+const { processTransactions } = require("./processTransactions.js");
 const { connection } = require("./connection.js");
 
 
 const getTransactionsForAddress = async (address) => {
     const signatureHistory = await fetchSignatureHistory(address);
-    const transactions = await fetchTransactions(signatureHistory);
-    let processedTransactions = [];
-    for(let i = 0; i < transactions.length; i++) {
-        const transaction = transactions[i];
-        const processedTransaction = await processTransactions(transaction);
-        processedTransactions.push(processedTransaction);
-    }
+    const processedTransactions = await fetchTransactions(signatureHistory);
     return processedTransactions;
 }
 
@@ -23,11 +17,18 @@ const fetchSignatureHistory = async (address) => {
 
 const fetchTransactions = async (signatureHistory) => {
     const transactions = await connection.getTransactions(signatureHistory);
-    return transactions;
+    let processedTransactions = [];
+    for(let i = 0; i < transactions.length; i++) {
+        const transaction = transactions[i];
+        const processedTransaction = processTransactions(transaction);
+        processedTransactions.push(processedTransaction);
+    }
+    return processedTransactions;
 }
 
 
 
 module.exports = {
-    getTransactionsForAddress
+    getTransactionsForAddress,
+    fetchTransactions
 }

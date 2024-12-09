@@ -1,11 +1,34 @@
-const { getTransactionsForAddress } = require("./src/transactions.js");
+const { getTransactionsForAddress } = require("./src/fetchTransactions.js");
+const { monitorWalletAddress } = require("./src/monitorWalletAddress.js");
+const WebSocket = require('ws');
 
+const wss = new WebSocket.Server({ port: 8080 });
 
-const WALLET_ADDRESS_1 = "HrpW6yzDnQdfsS3K8NpD4Vtz2XxkZUmieigQoa1GeGbV";
-const WALLET_ADDRESS_2 = "FDxSr2iosAu5zVAmLRTbhTnnKwvBHPMycVbpb2S9V5P3";
+wss.on('connection', (ws) => {
+    console.log('Client connected');
 
-const main = async () => {
-    const transactions = await getTransactionsForAddress(WALLET_ADDRESS_1);
-}
+    ws.send(JSON.stringify({ message: 'Connect to Solana Txn Data!' }));
 
-main();
+    ws.on('message', async (data) => {
+        console.log(`Received request: ${data}`);
+        if(!data) {
+            return;
+        }
+        const parsedData = JSON.parse(data);
+        if(parsedData.method === 'fetch-transactions') {
+            const transactions = await getTransactionsForAddress(parsedData.address);
+            ws.send(JSON.stringify(transactions));
+        } else if(parsedData.method === 'monitor-realtime-transactions') {
+            monitorWalletAddress(parsedData.address, ws);
+            ws.send(JSON.stringify({ message: `Monitoring ${parsedData.address} for transactions`}));
+        } else {
+            ws.send(JSON.stringify({ message: 'Invalid request'}));
+        }
+    });
+
+    ws.on('close', () => {
+        console.log('Client disconnected');
+    });
+});
+
+console.log('WebSocket server running on ws://localhost:8080');
